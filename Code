@@ -1,0 +1,92 @@
+!pip install tensorflow keras matplotlib opencv-python
+
+!pip install tensorflow keras matplotlib opencv-pythonfrom google.colab import drive
+
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+dataset_path = '/content/drive/MyDrive/plant_disease_dataset/'
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# Set up the ImageDataGenerator
+train_datagen = ImageDataGenerator(rescale=1./255)
+
+# Load the dataset using flow_from_directory
+train_generator = train_datagen.flow_from_directory(
+    dataset_path,  # Path to the dataset folder
+    target_size=(224, 224),  # Resize images to the input size of the model
+    batch_size=32,  # Batch size
+    class_mode='categorical'  # Use categorical labels (multi-class classification)
+)
+
+# Print the class labels
+print(train_generator.class_indices)
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras.optimizers import Adam
+
+def create_model():
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Flatten())
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(3, activation='softmax'))  # Adjusted to 3 output classes
+    return model
+
+# Create the model
+model = create_model()
+
+# Compile the model
+model.compile(optimizer=Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+model.fit(train_generator, epochs=10)
+
+# Save the model
+model.save('/content/drive/MyDrive/plant_disease_model.h5')
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+from google.colab import files
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import matplotlib.pyplot as plt  # <-- ADDED for displaying the image
+
+# Step 1: Upload the image
+uploaded = files.upload()  # This will prompt you to upload an image
+
+# Step 2: Load the uploaded image
+image_path = list(uploaded.keys())[0]  # Get the uploaded image's path
+img = image.load_img(image_path, target_size=(224, 224))  # Resize the image
+
+# Step 3: Convert the image to a numpy array and preprocess it
+img_array = image.img_to_array(img)  # Convert image to array
+img_array = np.expand_dims(img_array, axis=0)  # Add an extra dimension (for batch size)
+img_array /= 255.0  # Rescale the image (same as training)
+
+# Step 4: Make predictions
+predictions = model.predict(img_array)
+predicted_class = np.argmax(predictions, axis=1)  # Get the class with the highest probability
+
+# Step 5: Map the predicted class to the class name
+class_names = {0: 'bacterial_spot', 1: 'early_blight', 2: 'healthy'}  # Mapping from index to class label
+predicted_class_name = class_names[predicted_class[0]]
+
+# Step 6: Display the prediction
+print(f"Predicted Disease: {predicted_class_name}")
+print(f"Class Probabilities: {dict(zip(class_names.values(), predictions[0]))}")
+
+# ------------------------ **UPDATED CODE TO SHOW IMAGE WITH PREDICTION** ------------------------
+
+# Display the image with the prediction label
+plt.imshow(img)  # Show the uploaded image
+plt.axis('off')  # Hide the axis
+plt.title(f"Predicted: {predicted_class_name}", fontsize=14, color='red')  # Show prediction result
+plt.show()  # Display the image
+
+# ------------------------ **UPDATED CODE TO SHOW IMAGE WITH PREDICTION** -----------------------
